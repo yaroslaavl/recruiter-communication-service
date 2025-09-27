@@ -15,6 +15,7 @@ import org.yaroslaavl.communicationservice.database.repository.ChatParticipantRe
 import org.yaroslaavl.communicationservice.database.repository.ChatRepository;
 import org.yaroslaavl.communicationservice.dto.ChatMessageResponseDto;
 import org.yaroslaavl.communicationservice.dto.ChatResponseDto;
+import org.yaroslaavl.communicationservice.exception.ContentException;
 import org.yaroslaavl.communicationservice.feignClient.RecruitingFeignClient;
 import org.yaroslaavl.communicationservice.feignClient.dto.ApplicationChatInfo;
 import org.yaroslaavl.communicationservice.mapper.ChatMapper;
@@ -22,6 +23,7 @@ import org.yaroslaavl.communicationservice.service.ChatService;
 import org.yaroslaavl.communicationservice.service.SecurityContextService;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -54,9 +56,14 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @Transactional
     public ChatMessageResponseDto sendMessage(UUID chatId, String content) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
+
+        if (content == null || content.isEmpty()) {
+            throw new ContentException("Provided content has error");
+        }
 
         ChatMessage chatMessage = messageCreator(chat, content, Boolean.FALSE);
         return mapper.toMessageDto(chatMessageRepository.save(chatMessage));
@@ -76,19 +83,26 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @Transactional
     public List<ChatMessageResponseDto> findAllMessages(UUID chatId) {
         log.info("Attempting to find all chat messages by chat id {}", chatId);
         List<ChatMessage> messages = chatMessageRepository.findChatMessageByChat_Id(chatId, Limit.of(100));
 
-        messages.stream()
-                .filter(message -> message.getStatus() == MessageStatus.SENT)
-                .filter(message -> !message.getSenderId().equals(securityContextService.getAuthenticatedUserInfo()))
-                .forEach(message -> {
-                    message.setStatus(MessageStatus.DELIVERED);
-                    chatMessageRepository.save(message);
-                });
-
+        checkAndMarkMessagesAsDelivered(messages);
         return mapper.toMessageDto(messages);
+    }
+
+    private void checkAndMarkMessagesAsDelivered(List<ChatMessage> messages) {
+        List<ChatMessage> updatedMessages = messages.stream()
+                .filter(m -> m.getStatus() == MessageStatus.SENT)
+                .filter(m -> !m.getSenderId().equals(securityContextService.getAuthenticatedUserInfo()))
+                .peek(m -> m.setStatus(MessageStatus.DELIVERED))
+                .toList();
+
+        if (!updatedMessages.isEmpty()) {
+            log.info("Marking {} messages as delivered", updatedMessages.size());
+            chatMessageRepository.saveAllAndFlush(messages);
+        }
     }
 
     private void chatCreator(String candidateId, UUID applicationId) {
