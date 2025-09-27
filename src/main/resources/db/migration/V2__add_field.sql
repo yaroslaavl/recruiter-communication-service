@@ -1,0 +1,2 @@
+ALTER TABLE chat
+ADD COLUMN application_id UUID NOT NULL;
