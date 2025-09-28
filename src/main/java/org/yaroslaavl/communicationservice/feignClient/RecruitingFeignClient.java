@@ -16,5 +16,6 @@ public interface RecruitingFeignClient {
     @GetMapping("/applications/chat-open")
     boolean isOpenedChatting(@RequestParam("applicationId") UUID applicationId);
 
+    @GetMapping("/applications/chat-previews")
     List<ApplicationChatInfo> getPreviewApplications(@RequestParam("applicationIds") Set<UUID> applicationIds);
 }
