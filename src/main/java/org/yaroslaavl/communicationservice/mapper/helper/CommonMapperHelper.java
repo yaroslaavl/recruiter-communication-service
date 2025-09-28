@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class CommonMapper {
+public class CommonMapperHelper {
 
     private final SecurityContextService securityContextService;
     private final ChatMessageRepository chatMessageRepository;

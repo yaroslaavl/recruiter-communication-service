@@ -7,22 +7,26 @@ import org.yaroslaavl.communicationservice.database.entity.ChatMessage;
 import org.yaroslaavl.communicationservice.dto.ChatMessageResponseDto;
 import org.yaroslaavl.communicationservice.dto.ChatResponseDto;
 import org.yaroslaavl.communicationservice.feignClient.dto.ApplicationChatInfo;
-import org.yaroslaavl.communicationservice.mapper.helper.CommonMapper;
+import org.yaroslaavl.communicationservice.mapper.helper.CommonMapperHelper;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {CommonMapper.class})
+@Mapper(componentModel = "spring", uses = {CommonMapperHelper.class})
 public interface ChatMapper {
 
     @Mapping(target = "companyLogoUrl", expression = "java(companyUrl(chat, previews))")
     @Mapping(target = "vacancyTitle", expression = "java(vacancyTitle(chat, previews))")
-    @Mapping(target = "lastMessage", source = "chat.applicationId", qualifiedByName = "lastMessage")
-    @Mapping(target = "lastMessageStatus", source = "chat.applicationId", qualifiedByName = "lastMessageStatus")
-    @Mapping(target = "lastMessageDate", source = "chat.applicationId", qualifiedByName = "lastMessageDate")
-    @Mapping(target = "isForCurrentUser", source = "chat.applicationId", qualifiedByName = "isForCurrentUser")
+    @Mapping(target = "lastMessage", source = "chat.id", qualifiedByName = "lastMessage")
+    @Mapping(target = "lastMessageStatus", source = "chat.id", qualifiedByName = "lastMessageStatus")
+    @Mapping(target = "lastMessageDate", source = "chat.id", qualifiedByName = "lastMessageDate")
+    @Mapping(target = "isForCurrentUser", source = "chat.id", qualifiedByName = "isForCurrentUser")
     ChatResponseDto toDto(Chat chat, List<ApplicationChatInfo> previews);
 
-    List<ChatResponseDto> toDto(List<Chat> chats, List<ApplicationChatInfo> previews);
+     default List<ChatResponseDto> toDto(List<Chat> chats, List<ApplicationChatInfo> previews) {
+         return chats.stream()
+                 .map(chat -> toDto(chat, previews))
+                 .toList();
+     }
 
     @Mapping(target = "chatId", source = "chat.id")
     @Mapping(target = "sentAt", source = "createdAt")
