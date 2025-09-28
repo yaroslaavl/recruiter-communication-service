@@ -29,6 +29,7 @@ public class SecurityConfig {
                                 .requestMatchers(
                                         "/error",
                                         "/actuator/health").permitAll()
+                                .anyRequest().authenticated()
                 );
 
         return http.build();
