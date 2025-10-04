@@ -13,6 +13,6 @@ public class RabbitMqProperties {
     private String host;
     private String username;
     private String password;
-    private Integer port;
+    private Integer stomp;
     private String virtualHost;
 }

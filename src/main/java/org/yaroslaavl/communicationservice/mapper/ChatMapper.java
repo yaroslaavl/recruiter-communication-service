@@ -32,6 +32,10 @@ public interface ChatMapper {
     @Mapping(target = "sentAt", source = "createdAt")
     ChatMessageResponseDto toMessageDto(ChatMessage chatMessage);
 
+    @Mapping(target = "chat.id", source = "chatId")
+    @Mapping(target = "createdAt", source = "sentAt")
+    ChatMessage toEntity(ChatMessageResponseDto dto);
+
     List<ChatMessageResponseDto> toMessageDto(List<ChatMessage> chatMessages);
 
     default String companyUrl(Chat chat, List<ApplicationChatInfo> previews) {

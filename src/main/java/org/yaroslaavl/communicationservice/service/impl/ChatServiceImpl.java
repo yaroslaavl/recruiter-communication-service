@@ -5,7 +5,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Limit;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.yaroslaavl.communicationservice.config.properties.WebSocketProperties;
 import org.yaroslaavl.communicationservice.database.entity.Chat;
 import org.yaroslaavl.communicationservice.database.entity.ChatMessage;
 import org.yaroslaavl.communicationservice.database.entity.ChatParticipant;
@@ -23,10 +25,7 @@ import org.yaroslaavl.communicationservice.service.ChatService;
 import org.yaroslaavl.communicationservice.service.SecurityContextService;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,6 +35,7 @@ public class ChatServiceImpl implements ChatService {
 
     private static final String SYSTEM_MESSAGE = "The chat has been created";
 
+    private final SimpMessagingTemplate messagingTemplate;
     private final RecruitingFeignClient recruitingFeignClient;
 
     private final SecurityContextService securityContextService;
@@ -43,6 +43,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatRepository chatRepository;
     private final ChatMapper mapper;
+    private final WebSocketProperties properties;
 
     @Override
     @Transactional
@@ -57,7 +58,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ChatMessageResponseDto sendMessage(UUID chatId, String content) {
+    public void sendMessage(UUID chatId, String content) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
 
@@ -65,8 +66,16 @@ public class ChatServiceImpl implements ChatService {
             throw new ContentException("Provided content has error");
         }
 
-        ChatMessage chatMessage = messageCreator(chat, content, Boolean.FALSE);
-        return mapper.toMessageDto(chatMessageRepository.save(chatMessage));
+        ChatMessageResponseDto chatMessageResponseDto = messageCreator(chat, content, Boolean.FALSE);
+
+        String recipientId = chat.getParticipants()
+                .stream()
+                .map(ChatParticipant::getUserId)
+                .filter(id -> !id.equals(securityContextService.getAuthenticatedUserInfo()))
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("Recipient not found"));
+
+        messagingTemplate.convertAndSendToUser(recipientId, "/queue/chatroom/" + chat.getId(), chatMessageResponseDto);
     }
 
     @Override
@@ -115,8 +124,8 @@ public class ChatServiceImpl implements ChatService {
                 List.of(newParticipant(createdChat, candidateId),
                         newParticipant(createdChat, securityContextService.getAuthenticatedUserInfo())));
 
-        ChatMessage chatMessage = messageCreator(chat, SYSTEM_MESSAGE, Boolean.TRUE);
-        chatMessageRepository.saveAndFlush(chatMessage);
+        ChatMessageResponseDto chatMessageResponseDto = messageCreator(chat, SYSTEM_MESSAGE, Boolean.TRUE);
+        chatMessageRepository.saveAndFlush(mapper.toEntity(chatMessageResponseDto));
     }
 
     private ChatParticipant newParticipant(Chat chat, String userId) {
@@ -126,7 +135,7 @@ public class ChatServiceImpl implements ChatService {
         return participant;
     }
 
-    private ChatMessage messageCreator(Chat chat, String content, boolean isFirstMessage) {
+    private ChatMessageResponseDto messageCreator(Chat chat, String content, boolean isFirstMessage) {
         ChatMessage message = new ChatMessage();
         message.setChat(chat);
         message.setSenderId(isFirstMessage
@@ -135,6 +144,6 @@ public class ChatServiceImpl implements ChatService {
         message.setContent(content);
         message.setStatus(MessageStatus.SENT);
         message.setCreatedAt(LocalDateTime.now());
-        return message;
+        return mapper.toMessageDto(message);
     }
 }

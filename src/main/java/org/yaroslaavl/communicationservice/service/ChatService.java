@@ -10,7 +10,7 @@ public interface ChatService {
 
     void createChat(String candidateId, UUID applicationId);
 
-    ChatMessageResponseDto sendMessage(UUID chatId, String content);
+    void sendMessage(UUID chatId, String content);
 
     List<ChatResponseDto> getChats();
 
