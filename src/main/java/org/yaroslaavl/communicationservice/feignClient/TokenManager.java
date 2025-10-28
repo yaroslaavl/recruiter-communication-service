@@ -19,13 +19,13 @@ import java.util.Map;
 @Component
 public class TokenManager {
 
-    @Value("${keycloak.recruiting-service.client_id}")
+    @Value("${keycloak.communication-service.client_id}")
     private String clientId;
 
-    @Value("${keycloak.recruiting-service.client_secret}")
+    @Value("${keycloak.communication-service.client_secret}")
     private String clientSecret;
 
-    @Value("${keycloak.recruiting-service.urls.token}")
+    @Value("${keycloak.communication-service.urls.token}")
     private String tokenUrl;
 
     public String getServiceToken() {
