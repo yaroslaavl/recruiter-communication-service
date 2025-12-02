@@ -34,6 +34,9 @@ public interface ChatMapper {
 
     @Mapping(target = "chat.id", source = "chatId")
     @Mapping(target = "createdAt", source = "sentAt")
+    @Mapping(target = "senderId", source = "senderId")
+    @Mapping(target = "content", source = "content")
+    @Mapping(target = "status", source = "status")
     ChatMessage toEntity(ChatMessageResponseDto dto);
 
     List<ChatMessageResponseDto> toMessageDto(List<ChatMessage> chatMessages);

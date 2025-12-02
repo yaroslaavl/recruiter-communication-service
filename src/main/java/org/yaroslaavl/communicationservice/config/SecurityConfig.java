@@ -32,7 +32,7 @@ public class SecurityConfig {
                                         "/swagger-ui.html",
                                         "/swagger-ui/**",
                                         "/actuator/health").permitAll()
-                                .anyRequest().authenticated()
+                                .anyRequest().permitAll()
                 );
 
         return http.build();

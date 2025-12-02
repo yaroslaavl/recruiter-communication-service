@@ -28,4 +28,14 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
     ))
     """)
     List<Chat> findAllByUserId(String userId);
+
+    @Query("""
+    SELECT c FROM Chat c
+    WHERE (:userId IS NULL OR EXISTS(
+        SELECT cp FROM ChatParticipant cp WHERE cp.userId = :userId
+    )) AND c.applicationId = :applicationId
+    """)
+    Optional<Chat> findByUserIdAndApplicationId(String userId, UUID applicationId);
+
+    boolean existsByApplicationId(UUID applicationId);
 }

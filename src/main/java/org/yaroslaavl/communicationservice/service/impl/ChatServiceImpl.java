@@ -58,7 +58,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public void sendMessage(UUID chatId, String content) {
+    public void sendMessage(UUID chatId, String content, String senderId) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new EntityNotFoundException("Chat not found"));
 
@@ -66,20 +66,21 @@ public class ChatServiceImpl implements ChatService {
             throw new ContentException("Provided content has error");
         }
 
-        ChatMessageResponseDto chatMessageResponseDto = messageCreator(chat, content, Boolean.FALSE);
+        ChatMessageResponseDto chatMessageResponseDto = messageCreator(chat, content, Boolean.FALSE, senderId);
 
         String recipientId = chat.getParticipants()
                 .stream()
                 .map(ChatParticipant::getUserId)
-                .filter(id -> !id.equals(securityContextService.getAuthenticatedUserInfo()))
+                .filter(id -> !id.equals(senderId))
                 .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Recipient not found"));
-
-        messagingTemplate.convertAndSendToUser(recipientId, "/queue/chatroom/" + chat.getId(), chatMessageResponseDto);
+        chatMessageRepository.saveAndFlush(mapper.toEntity(chatMessageResponseDto));
+        String destination = "/queue/chatroom." + chatId + "." + recipientId;
+        messagingTemplate.convertAndSend(destination, chatMessageResponseDto);
     }
 
     @Override
-    public List<ChatResponseDto> getChats() {
+    public List<ChatResponseDto> getChatsCandidate() {
         List<Chat> chats = chatRepository.findAllByUserId(securityContextService.getAuthenticatedUserInfo());
 
         Set<UUID> applicationIds = chats.stream()
@@ -92,6 +93,14 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public ChatResponseDto getChatRecruiter(UUID applicationId) {
+        Optional<Chat> chat = chatRepository.findByUserIdAndApplicationId(securityContextService.getAuthenticatedUserInfo(), applicationId);
+
+        List<ApplicationChatInfo> previews = recruitingFeignClient.getPreviewApplications(Set.of(applicationId));
+        return mapper.toDto(chat.get(), previews);
+    }
+
+    @Override
     @Transactional
     public List<ChatMessageResponseDto> findAllMessages(UUID chatId) {
         log.info("Attempting to find all chat messages by chat id {}", chatId);
@@ -99,6 +108,11 @@ public class ChatServiceImpl implements ChatService {
 
         checkAndMarkMessagesAsDelivered(messages);
         return mapper.toMessageDto(messages);
+    }
+
+    @Override
+    public boolean checkChatExist(UUID applicationId) {
+        return chatRepository.existsByApplicationId(applicationId);
     }
 
     private void checkAndMarkMessagesAsDelivered(List<ChatMessage> messages) {
@@ -124,7 +138,7 @@ public class ChatServiceImpl implements ChatService {
                 List.of(newParticipant(createdChat, candidateId),
                         newParticipant(createdChat, securityContextService.getAuthenticatedUserInfo())));
 
-        ChatMessageResponseDto chatMessageResponseDto = messageCreator(chat, SYSTEM_MESSAGE, Boolean.TRUE);
+        ChatMessageResponseDto chatMessageResponseDto = messageCreator(chat, SYSTEM_MESSAGE, Boolean.TRUE, null);
         chatMessageRepository.saveAndFlush(mapper.toEntity(chatMessageResponseDto));
     }
 
@@ -135,12 +149,12 @@ public class ChatServiceImpl implements ChatService {
         return participant;
     }
 
-    private ChatMessageResponseDto messageCreator(Chat chat, String content, boolean isFirstMessage) {
+    private ChatMessageResponseDto messageCreator(Chat chat, String content, boolean isFirstMessage, String senderId) {
         ChatMessage message = new ChatMessage();
         message.setChat(chat);
         message.setSenderId(isFirstMessage
                 ? "SYSTEM"
-                : securityContextService.getAuthenticatedUserInfo());
+                : senderId);
         message.setContent(content);
         message.setStatus(MessageStatus.SENT);
         message.setCreatedAt(LocalDateTime.now());

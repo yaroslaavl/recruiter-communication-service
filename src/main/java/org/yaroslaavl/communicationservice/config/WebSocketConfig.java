@@ -20,21 +20,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint(webSocketProperties.getEndpoint())
-                .setAllowedOriginPatterns("http://127.0.0.1:5500")
+                .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.setApplicationDestinationPrefixes(webSocketProperties.getApplicationPrefix());
-        registry.setUserDestinationPrefix(webSocketProperties.getUserPrefix());
-        registry.enableStompBrokerRelay(webSocketProperties.getBrokerTopics())
+        registry.setApplicationDestinationPrefixes("/app");
+
+        registry.enableStompBrokerRelay("/queue", "/topic")
                 .setRelayHost(rabbitMqProperties.getHost())
+                .setRelayPort(rabbitMqProperties.getStomp())
                 .setClientLogin(rabbitMqProperties.getUsername())
                 .setClientPasscode(rabbitMqProperties.getPassword())
                 .setSystemLogin(rabbitMqProperties.getUsername())
                 .setSystemPasscode(rabbitMqProperties.getPassword())
-                .setRelayPort(rabbitMqProperties.getStomp())
                 .setVirtualHost(rabbitMqProperties.getVirtualHost());
     }
 }

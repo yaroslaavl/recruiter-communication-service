@@ -10,9 +10,13 @@ public interface ChatService {
 
     void createChat(String candidateId, UUID applicationId);
 
-    void sendMessage(UUID chatId, String content);
+    void sendMessage(UUID chatId, String content, String senderId);
 
-    List<ChatResponseDto> getChats();
+    List<ChatResponseDto> getChatsCandidate();
+
+    ChatResponseDto getChatRecruiter(UUID applicationId);
 
     List<ChatMessageResponseDto> findAllMessages(UUID chatId);
+
+    boolean checkChatExist(UUID applicationId);
 }

@@ -27,14 +27,25 @@ public class ChatController {
     }
 
     @GetMapping("/mine")
-    @PreAuthorize("hasAnyRole('VERIFIED_CANDIDATE', 'VERIFIED_RECRUITER')")
+    @PreAuthorize("hasAnyRole('VERIFIED_CANDIDATE')")
     public ResponseEntity<List<ChatResponseDto>> getChats() {
-        return ResponseEntity.ok(chatService.getChats());
+        return ResponseEntity.ok(chatService.getChatsCandidate());
+    }
+
+    @GetMapping("/{applicationId}/recruiter")
+    @PreAuthorize("hasAnyRole('VERIFIED_RECRUITER')")
+    public ResponseEntity<ChatResponseDto> getChatRecruiter(@PathVariable("applicationId") UUID applicationId) {
+        return ResponseEntity.ok(chatService.getChatRecruiter(applicationId));
     }
 
     @GetMapping("/{chatId}/messages")
     @PreAuthorize("hasAnyRole('VERIFIED_CANDIDATE', 'VERIFIED_RECRUITER') and @accessChecker.hasAccessToChat(#chatId)")
     public ResponseEntity<List<ChatMessageResponseDto>> getChatMessages(@PathVariable("chatId") UUID chatId) {
         return ResponseEntity.ok(chatService.findAllMessages(chatId));
+    }
+
+    @GetMapping("/exists")
+    public ResponseEntity<Boolean> chatExists(@RequestParam("applicationId") UUID applicationId) {
+        return ResponseEntity.ok(chatService.checkChatExist(applicationId));
     }
 }
