@@ -12,6 +12,8 @@ import org.yaroslaavl.communicationservice.service.SecurityContextService;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.yaroslaavl.communicationservice.service.impl.SecurityContextServiceImpl.SUB;
+
 @Component
 @RequiredArgsConstructor
 public class CommonMapperHelper {
@@ -38,7 +40,7 @@ public class CommonMapperHelper {
     public boolean isForCurrentUser(UUID chatId) {
         return getLastChatMessage(chatId)
                 .getSenderId()
-                .equals(securityContextService.getAuthenticatedUserInfo());
+                .equals(securityContextService.getAuthenticatedUserInfo(SUB));
     }
 
     private ChatMessage getLastChatMessage(UUID chatId) {

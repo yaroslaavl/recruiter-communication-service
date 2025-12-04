@@ -12,13 +12,14 @@ import org.yaroslaavl.communicationservice.service.SecurityContextService;
 @Service
 public class SecurityContextServiceImpl implements SecurityContextService {
 
-    private static final String SUB = "sub";
+    public static final String SUB = "sub";
+    public static final String FULL_NAME = "name";
 
     @Override
-    public String getAuthenticatedUserInfo() {
+    public String getAuthenticatedUserInfo(String type) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication instanceof JwtAuthenticationToken jwt) {
-            return jwt.getTokenAttributes().get(SUB).toString();
+            return jwt.getTokenAttributes().get(type).toString();
         }
 
         log.warn("Authentication is not JwtAuthenticationToken or it has no sub");

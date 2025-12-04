@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Limit;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import org.yaroslaavl.communicationservice.config.properties.WebSocketProperties;
+import org.yaroslaavl.communicationservice.broker.CommunicationEventPublisher;
 import org.yaroslaavl.communicationservice.database.entity.Chat;
 import org.yaroslaavl.communicationservice.database.entity.ChatMessage;
 import org.yaroslaavl.communicationservice.database.entity.ChatParticipant;
@@ -28,6 +28,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.yaroslaavl.communicationservice.service.impl.SecurityContextServiceImpl.FULL_NAME;
+import static org.yaroslaavl.communicationservice.service.impl.SecurityContextServiceImpl.SUB;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -43,7 +46,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatRepository chatRepository;
     private final ChatMapper mapper;
-    private final WebSocketProperties properties;
+    private final CommunicationEventPublisher publisher;
 
     @Override
     @Transactional
@@ -52,6 +55,7 @@ public class ChatServiceImpl implements ChatService {
 
         if (isOpenedForChatting) {
             chatCreator(candidateId, applicationId);
+            publisher.publishCommunicationEvent(CommunicationEventPublisher.startChat(candidateId, securityContextService.getAuthenticatedUserInfo(FULL_NAME)));
             log.info("The chat has been created");
         }
     }
@@ -74,6 +78,7 @@ public class ChatServiceImpl implements ChatService {
                 .filter(id -> !id.equals(senderId))
                 .findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Recipient not found"));
+
         chatMessageRepository.saveAndFlush(mapper.toEntity(chatMessageResponseDto));
         String destination = "/queue/chatroom." + chatId + "." + recipientId;
         messagingTemplate.convertAndSend(destination, chatMessageResponseDto);
@@ -81,7 +86,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public List<ChatResponseDto> getChatsCandidate() {
-        List<Chat> chats = chatRepository.findAllByUserId(securityContextService.getAuthenticatedUserInfo());
+        List<Chat> chats = chatRepository.findAllByUserId(securityContextService.getAuthenticatedUserInfo(SUB));
 
         Set<UUID> applicationIds = chats.stream()
                 .map(Chat::getApplicationId)
@@ -94,7 +99,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ChatResponseDto getChatRecruiter(UUID applicationId) {
-        Optional<Chat> chat = chatRepository.findByUserIdAndApplicationId(securityContextService.getAuthenticatedUserInfo(), applicationId);
+        Optional<Chat> chat = chatRepository.findByUserIdAndApplicationId(securityContextService.getAuthenticatedUserInfo(SUB), applicationId);
 
         List<ApplicationChatInfo> previews = recruitingFeignClient.getPreviewApplications(Set.of(applicationId));
         return mapper.toDto(chat.get(), previews);
@@ -118,7 +123,7 @@ public class ChatServiceImpl implements ChatService {
     private void checkAndMarkMessagesAsDelivered(List<ChatMessage> messages) {
         List<ChatMessage> updatedMessages = messages.stream()
                 .filter(m -> m.getStatus() == MessageStatus.SENT)
-                .filter(m -> !m.getSenderId().equals(securityContextService.getAuthenticatedUserInfo()))
+                .filter(m -> !m.getSenderId().equals(securityContextService.getAuthenticatedUserInfo(SUB)))
                 .peek(m -> m.setStatus(MessageStatus.DELIVERED))
                 .toList();
 
@@ -136,7 +141,7 @@ public class ChatServiceImpl implements ChatService {
 
         chatParticipantRepository.saveAllAndFlush(
                 List.of(newParticipant(createdChat, candidateId),
-                        newParticipant(createdChat, securityContextService.getAuthenticatedUserInfo())));
+                        newParticipant(createdChat, securityContextService.getAuthenticatedUserInfo(SUB))));
 
         ChatMessageResponseDto chatMessageResponseDto = messageCreator(chat, SYSTEM_MESSAGE, Boolean.TRUE, null);
         chatMessageRepository.saveAndFlush(mapper.toEntity(chatMessageResponseDto));
