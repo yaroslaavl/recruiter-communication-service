@@ -7,7 +7,6 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.yaroslaavl.communicationservice.config.properties.RabbitMqProperties;
-import org.yaroslaavl.communicationservice.config.properties.WebSocketProperties;
 
 @Configuration
 @RequiredArgsConstructor
@@ -15,23 +14,21 @@ import org.yaroslaavl.communicationservice.config.properties.WebSocketProperties
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final RabbitMqProperties rabbitMqProperties;
-    private final WebSocketProperties webSocketProperties;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();
-
-        registry.addEndpoint("/rtc")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(
+                        "https://172.20.10.2:3000",
+                        "http://localhost:3000"
+                );
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.setApplicationDestinationPrefixes("/app");
-
-        registry.enableStompBrokerRelay("/queue", "/topic")
+        registry.enableSimpleBroker("/topic/video");
+        registry.enableStompBrokerRelay("/topic/chat", "/queue")
                 .setRelayHost(rabbitMqProperties.getHost())
                 .setRelayPort(rabbitMqProperties.getStomp())
                 .setClientLogin(rabbitMqProperties.getUsername())

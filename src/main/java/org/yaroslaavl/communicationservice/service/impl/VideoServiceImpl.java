@@ -24,7 +24,6 @@ public class VideoServiceImpl implements VideoService {
 
     private final SecurityContextService securityContextService;
     private final VideoRepository videoRepository;
-    private final PasswordEncoder passwordEncoder;
 
     private static final Long VIDEO_PIN_LIFE_SPAN = 30L;
 
@@ -36,7 +35,7 @@ public class VideoServiceImpl implements VideoService {
         video.setApplicationId(applicationId);
         video.setRecruiterId(authenticatedUserInfo);
         video.setCandidateId(candidateId);
-        video.setPin(passwordEncoder.encode(pin));
+        video.setPin(pin);
         video.setPinExpiresAt(LocalDateTime.now().plusMinutes(VIDEO_PIN_LIFE_SPAN));
         video.setRecruiterJoined(false);
         video.setCandidateJoined(false);

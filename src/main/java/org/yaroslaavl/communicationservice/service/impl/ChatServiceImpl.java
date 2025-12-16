@@ -80,7 +80,7 @@ public class ChatServiceImpl implements ChatService {
                 .orElseThrow(() -> new EntityNotFoundException("Recipient not found"));
 
         chatMessageRepository.saveAndFlush(mapper.toEntity(chatMessageResponseDto));
-        String destination = "/queue/chatroom." + chatId + "." + recipientId;
+        String destination = "/topic/chatroom." + chatId;
         messagingTemplate.convertAndSend(destination, chatMessageResponseDto);
     }
 
