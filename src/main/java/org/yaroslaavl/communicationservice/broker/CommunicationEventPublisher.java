@@ -36,4 +36,15 @@ public class CommunicationEventPublisher {
                         "fullName", fullName))
                 .build();
     }
+
+    public static NotificationDto videoPin(String candidateId, String fullName) {
+        return NotificationDto.builder()
+                .targetUserId(candidateId)
+                .entityType("SYSTEM")
+                .notificationType("EMAIL")
+                .content("video_pin")
+                .contentVariables(Map.of(
+                        "fullName", fullName))
+                .build();
+    }
 }

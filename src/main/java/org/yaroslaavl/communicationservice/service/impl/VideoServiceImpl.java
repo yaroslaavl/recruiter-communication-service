@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.yaroslaavl.communicationservice.broker.CommunicationEventPublisher;
 import org.yaroslaavl.communicationservice.database.entity.Video;
 import org.yaroslaavl.communicationservice.database.entity.enums.CallStatus;
 import org.yaroslaavl.communicationservice.database.repository.VideoRepository;
@@ -15,6 +16,7 @@ import org.yaroslaavl.communicationservice.service.VideoService;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.yaroslaavl.communicationservice.service.impl.SecurityContextServiceImpl.FULL_NAME;
 import static org.yaroslaavl.communicationservice.service.impl.SecurityContextServiceImpl.SUB;
 
 @Slf4j
@@ -24,6 +26,7 @@ public class VideoServiceImpl implements VideoService {
 
     private final SecurityContextService securityContextService;
     private final VideoRepository videoRepository;
+    private final CommunicationEventPublisher publisher;
 
     private static final Long VIDEO_PIN_LIFE_SPAN = 30L;
 
@@ -42,6 +45,8 @@ public class VideoServiceImpl implements VideoService {
         video.setStatus(CallStatus.CREATED);
 
         videoRepository.save(video);
+
+        publisher.publishCommunicationEvent(CommunicationEventPublisher.videoPin(candidateId, securityContextService.getAuthenticatedUserInfo(FULL_NAME)));
     }
 
     @Override
